@@ -1,0 +1,7 @@
+{
+  "name": "AutoFlow Portfolio",
+  "description": "Showcase and direct WhatsApp sales portfolio for ready-to-deploy automation tools and bots with unique product tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

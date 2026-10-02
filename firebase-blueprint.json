@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An automation tool product available for sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 200 },
+        "tagline": { "type": "string", "maxLength": 500 },
+        "description": { "type": "string", "maxLength": 5000 },
+        "price": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 10 },
+        "category": { "type": "string", "maxLength": 100 },
+        "imageUrl": { "type": "string", "maxLength": 1000000 },
+        "deliveryFormat": { "type": "string", "maxLength": 200 },
+        "features": { "type": "array" },
+        "specs": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "name", "price"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Store configuration and WhatsApp number",
+      "type": "object",
+      "properties": {
+        "whatsappNumber": { "type": "string", "maxLength": 50 },
+        "whatsappDisplayNumber": { "type": "string", "maxLength": 50 },
+        "businessName": { "type": "string", "maxLength": 100 },
+        "currencySymbol": { "type": "string", "maxLength": 10 },
+        "customWelcomeMessage": { "type": "string", "maxLength": 2000 }
+      },
+      "required": ["whatsappNumber"]
+    },
+    "AdminCredential": {
+      "title": "AdminCredential",
+      "description": "Global admin credentials hash",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 100 },
+        "passwordHash": { "type": "string", "maxLength": 256 }
+      },
+      "required": ["email", "passwordHash"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of automation products"
+    },
+    "/settings/{settingId}": {
+      "schema": "Settings",
+      "description": "Application settings document"
+    },
+    "/admin_auth/{authId}": {
+      "schema": "AdminCredential",
+      "description": "Admin authentication hash document"
+    }
+  }
+}

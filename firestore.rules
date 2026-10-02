@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net - default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidProduct(data) {
+      return data.id is string && data.id.size() <= 64
+        && data.name is string && data.name.size() <= 200
+        && (data.price is int || data.price is float)
+        && (!('category' in data) || (data.category is string && data.category.size() <= 100))
+        && (!('tagline' in data) || (data.tagline is string && data.tagline.size() <= 500))
+        && (!('description' in data) || (data.description is string && data.description.size() <= 10000));
+    }
+
+    // Products: Worldwide public read, validated write
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isValidProduct(request.resource.data);
+      allow delete: if true;
+    }
+
+    // Settings: Worldwide public read, write for configuration
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Admin Auth Hash: Worldwide read for verification, write for password change
+    match /admin_auth/{authId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

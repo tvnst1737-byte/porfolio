@@ -8,8 +8,6 @@ import { Footer } from './components/Footer';
 import { Product, AdminSettings } from './types';
 import { INITIAL_PRODUCTS, DEFAULT_SETTINGS } from './data/initialProducts';
 import {
-  getProducts,
-  getSettings,
   verifyAdminSession,
   logoutAdmin,
   apiAddProduct,
@@ -18,6 +16,10 @@ import {
   apiUpdateSettings,
   apiResetDefaults,
 } from './utils/api';
+import {
+  subscribeToCloudProducts,
+  subscribeToCloudSettings,
+} from './firebase/db';
 import { Search, Layers, Loader2 } from 'lucide-react';
 
 function checkIsAdminPath(): boolean {
@@ -35,7 +37,7 @@ function checkIsAdminPath(): boolean {
 }
 
 export default function App() {
-  // State for products and settings loaded from backend API
+  // State for products and settings synced with Cloud Firestore
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [settings, setSettings] = useState<AdminSettings>(DEFAULT_SETTINGS);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -50,25 +52,32 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Load products and settings from server
-  const loadServerData = useCallback(async () => {
-    try {
-      const [fetchedProducts, fetchedSettings] = await Promise.all([
-        getProducts().catch(() => INITIAL_PRODUCTS),
-        getSettings().catch(() => DEFAULT_SETTINGS),
-      ]);
-      setProducts(fetchedProducts);
-      setSettings(fetchedSettings);
-    } catch (e) {
-      console.error('Error fetching data from server', e);
-    } finally {
-      setDataLoaded(true);
-    }
-  }, []);
-
+  // Real-time Cloud Synchronization (Works worldwide across all devices)
   useEffect(() => {
-    loadServerData();
-  }, [loadServerData]);
+    const unsubProducts = subscribeToCloudProducts(
+      (cloudProducts) => {
+        if (cloudProducts && cloudProducts.length > 0) {
+          setProducts(cloudProducts);
+        }
+        setDataLoaded(true);
+      },
+      (err) => {
+        console.warn('Using local fallback while cloud connects:', err);
+        setDataLoaded(true);
+      }
+    );
+
+    const unsubSettings = subscribeToCloudSettings((cloudSettings) => {
+      if (cloudSettings) {
+        setSettings(cloudSettings);
+      }
+    });
+
+    return () => {
+      unsubProducts();
+      unsubSettings();
+    };
+  }, []);
 
   // Check and verify session
   const checkAuth = useCallback(async () => {
@@ -133,37 +142,29 @@ export default function App() {
     navigateToStorefront();
   };
 
-  // Admin CRUD Handlers communicating with server
+  // Admin CRUD Handlers communicating with Cloud Firestore
   const handleAddProduct = async (newProduct: Product) => {
-    const created = await apiAddProduct(newProduct);
-    setProducts((prev) => [created, ...prev]);
+    await apiAddProduct(newProduct);
   };
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
-    const updated = await apiUpdateProduct(updatedProduct);
-    setProducts((prev) =>
-      prev.map((p) => (p.id === updated.id ? updated : p))
-    );
+    await apiUpdateProduct(updatedProduct);
   };
 
   const handleDeleteProduct = async (productId: string) => {
     await apiDeleteProduct(productId);
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
     if (selectedProduct?.id === productId) {
       setSelectedProduct(null);
     }
   };
 
   const handleUpdateSettings = async (newSettings: AdminSettings) => {
-    const updated = await apiUpdateSettings(newSettings);
-    setSettings(updated);
+    await apiUpdateSettings(newSettings);
   };
 
   const handleResetDefaults = async () => {
-    if (window.confirm('Reset all automation products on the server to initial showcase items?')) {
-      const result = await apiResetDefaults();
-      setProducts(result.products);
-      setSettings(result.settings);
+    if (window.confirm('Reset all automation products in the Cloud Database to initial showcase items?')) {
+      await apiResetDefaults();
     }
   };
 
@@ -303,7 +304,7 @@ export default function App() {
             {!dataLoaded ? (
               <div className="p-20 text-center flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
-                <span className="text-xs font-mono-code text-neutral-400">Loading catalog...</span>
+                <span className="text-xs font-mono-code text-neutral-400">Loading catalog from cloud database...</span>
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="p-16 text-center rounded-2xl border border-neutral-800 bg-neutral-900/40 space-y-3">
